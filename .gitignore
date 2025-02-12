@@ -1,0 +1,29 @@
+# .gitignore
+
+# Ignore the keyring directory
+keyring/
+
+# Ignore Go build files
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+
+# Ignore Go vendor directory
+vendor/
+
+# Ignore Go test binaries
+*.test
+
+# Ignore Go dependency files
+Gopkg.lock
+Gopkg.toml
+go.sum
+
+# Ignore IDE/editor specific files
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store

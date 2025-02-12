@@ -1,0 +1,30 @@
+# Version control
+.git
+.gitignore
+
+# Development artifacts
+*.md
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Build artifacts
+keyserver
+*.exe
+
+# go mod files
+go.mod
+go.sum
+
+# Environment and configuration
+.env*
+keyring/*
+
+# Docker files
+Dockerfile
+.dockerignore
+
+# Temporary files
+*.log
+*.tmp

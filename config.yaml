@@ -1,0 +1,19 @@
+hosts:
+  webserver1:
+    token: "foo"
+    users: ["alice", "bob"]
+    groups: ["devops"]
+  dbserver1:
+    token: "bar"
+    users: ["carol"]
+    groups: ["dba"]
+  dbserver2:
+    token: "baz"
+    users: 
+      - "dave"
+
+groups:
+  devops:
+    users: ["dave", "eve"]
+  dba:
+    users: ["frank", "grace"]
