@@ -13,13 +13,17 @@
 keyserver
 *.exe
 
-# go mod files
-go.mod
+# Ignore Go dependency files
+Gopkg.lock
+Gopkg.toml
 go.sum
 
 # Environment and configuration
-.env*
-keyring/*
+*.env*
+keyring/
+
+# bash scripts
+fetch-authorized.sh
 
 # Docker files
 Dockerfile

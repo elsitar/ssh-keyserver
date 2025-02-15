@@ -11,7 +11,6 @@ import (
 	"time"
 
 	"github.com/fsnotify/fsnotify"
-	"github.com/gorilla/mux"
 	"golang.org/x/crypto/ssh"
 	"gopkg.in/yaml.v2"
 )
@@ -202,8 +201,19 @@ func (s *Server) getKeysForUsers(users []string) string {
 }
 
 func (s *Server) getKeysHandler(w http.ResponseWriter, r *http.Request) {
-	vars := mux.Vars(r)
-	hostname := vars["hostname"]
+	// Check HTTP method
+	if r.Method != http.MethodGet {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	// Extract hostname from path
+	path := strings.TrimPrefix(r.URL.Path, "/keys/")
+	if path == "" {
+		http.Error(w, "Missing hostname", http.StatusBadRequest)
+		return
+	}
+	hostname := path
 
 	// Validate Hostname
 	_, exists := s.config.Hosts[hostname]
@@ -251,8 +261,9 @@ func main() {
 		log.Fatalf("Failed to initialize server: %v", err)
 	}
 
-	r := mux.NewRouter()
-	r.HandleFunc("/keys/{hostname}", server.getKeysHandler).Methods("GET")
+	// Use default ServeMux
+	mux := http.NewServeMux()
+	mux.HandleFunc("/keys/", server.getKeysHandler)
 
 	port := os.Getenv("PORT")
 	if port == "" {
@@ -260,7 +271,7 @@ func main() {
 	}
 
 	log.Printf("Starting server on port %s", port)
-	if err := http.ListenAndServe(":"+port, r); err != nil {
+	if err := http.ListenAndServe(":"+port, mux); err != nil {
 		log.Fatal(err)
 	}
 }
