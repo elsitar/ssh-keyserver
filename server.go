@@ -5,13 +5,11 @@ import (
 	"log"
 	"net/http"
 	"os"
-	"path/filepath"
 	"strings"
 	"sync"
 	"time"
 
 	"github.com/fsnotify/fsnotify"
-	"golang.org/x/crypto/ssh"
 	"gopkg.in/yaml.v2"
 )
 
@@ -34,9 +32,10 @@ type Server struct {
 	config     Config
 	configLock sync.RWMutex
 	configPath string
+	userKeys   *UserKeys
 }
 
-func NewServer(configPath string) (*Server, error) {
+func NewServer(configPath string, keyringPath string) (*Server, error) {
 	s := &Server{
 		configPath: configPath,
 	}
@@ -44,6 +43,13 @@ func NewServer(configPath string) (*Server, error) {
 	if err := s.loadConfig(); err != nil {
 		return nil, err
 	}
+
+	// Initialize key cache
+	userKeys, err := NewUserKeys(keyringPath)
+	if err != nil {
+		return nil, fmt.Errorf("failed to initialize key cache: %v", err)
+	}
+	s.userKeys = userKeys
 
 	// Setup config file watcher
 	if err := s.watchConfig(); err != nil {
@@ -87,11 +93,11 @@ func (s *Server) watchConfig() error {
 				if !ok {
 					return
 				}
-				if event.Op&fsnotify.Write == fsnotify.Write {
+				if event.Has(fsnotify.Write) {
 					if debounceTimer != nil {
 						debounceTimer.Stop()
 					}
-					debounceTimer = time.AfterFunc(100*time.Millisecond, func() {
+					debounceTimer = time.AfterFunc(1000*time.Millisecond, func() {
 						if err := s.loadConfig(); err != nil {
 							log.Printf("Error reloading config: %v", err)
 						} else {
@@ -149,13 +155,14 @@ func (s *Server) getUsersForHost(hostname string) []string {
 
 	users := make([]string, 0, len(uniqueUsers))
 	for user := range uniqueUsers {
-		_, err := os.ReadDir(filepath.Join("keyring", user))
-		if err != nil {
-			log.Printf("Error reading keyring for user %s: %v", user, err)
-			continue
+		// Use UserKeys object to validate if user has keys
+		if keys := s.userKeys.GetUserKeys(user); len(keys) > 0 {
+			users = append(users, user)
+		} else {
+			log.Printf("No valid keys found for user %s", user)
 		}
-		users = append(users, user)
 	}
+
 	log.Printf("Found %d users for %s: %v", len(users), hostname, users)
 	return users
 }
@@ -166,34 +173,9 @@ func (s *Server) getKeysForUsers(users []string) string {
 
 	var keys strings.Builder
 	for _, username := range users {
-		userKeyDir := filepath.Join("keyring", username)
-		files, err := os.ReadDir(userKeyDir)
-		if err != nil {
-			continue
-		}
-
-		for _, file := range files {
-			if !strings.HasSuffix(file.Name(), ".pub") {
-				continue
-			}
-
-			keyPath := filepath.Join(userKeyDir, file.Name())
-			keyData, err := os.ReadFile(keyPath)
-			if err != nil {
-				log.Printf("Error reading key file %s: %v", keyPath, err)
-				continue
-			}
-
-			// Check if key is valid
-			_, _, _, _, err = ssh.ParseAuthorizedKey(keyData)
-			if err != nil {
-				log.Printf("Invalid key found in %s", keyPath)
-				continue
-			}
-			keys.Write(keyData)
-			if !strings.HasSuffix(string(keyData), "\n") {
-				keys.WriteString("\n")
-			}
+		userKeys := s.userKeys.GetUserKeys(username)
+		for _, key := range userKeys {
+			keys.WriteString(key)
 		}
 	}
 

@@ -3,7 +3,6 @@ FROM golang:1.23.6-alpine AS builder
 WORKDIR /build
 COPY . .
 RUN go mod tidy
-RUN go mod download
 RUN CGO_ENABLED=0 GOOS=linux go build -o keyserver
 
 # Runtime stage

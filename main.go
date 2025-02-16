@@ -7,7 +7,7 @@ import (
 )
 
 func main() {
-	server, err := NewServer("config.yaml")
+	server, err := NewServer("config.yaml", "keyring")
 	if err != nil {
 		log.Fatalf("Failed to initialize server: %v", err)
 	}
